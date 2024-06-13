@@ -7,7 +7,7 @@ use jsonwebtoken::{encode, decode, EncodingKey, DecodingKey, Header, Validation,
 use serde::{Deserialize, Serialize};
 use web3::transports::Http;
 use web3::Web3;
-use web3::types::{Block, BlockId, H256, TransactionId, BlockNumber};
+use web3::types::{Block, BlockId, H256, TransactionId, Address, BlockNumber};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -80,6 +80,28 @@ async fn get_transaction_details(node_url: web::Data<String>, tx_hash: web::Path
     }
 }
 
+async fn get_balance(node_url: web::Data<String>, address: web::Path<String>) -> impl Responder {
+    let transport = match Http::new(&node_url) {
+        Ok(transport) => transport,
+        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+    };
+
+    let web3 = Web3::new(transport);
+
+    let address: Address = match address.parse() {
+        Ok(addr) => addr,
+        Err(_) => return HttpResponse::InternalServerError().body("Error parseando la dirección"),
+    };
+
+    let balance = match web3.eth().balance(address, None).await {
+        Ok(balance) => balance,
+        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el balance"),
+    };
+
+    HttpResponse::Ok().body(format!("Balance de la dirección {}: {}", address, balance))
+}
+
+
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello, world!")
 }
@@ -139,6 +161,11 @@ async fn main() -> std::io::Result<()> {
                 web::resource("/transaction_details/{tx_hash}")
                     .wrap(HttpAuthentication::bearer(jwt_middleware))
                     .route(web::get().to(get_transaction_details))
+            )
+            .service(
+                web::resource("/balance/{address}")
+                    .wrap(HttpAuthentication::bearer(jwt_middleware))
+                    .route(web::get().to(get_balance))
             )
     })
     .bind("127.0.0.1:8080")?
