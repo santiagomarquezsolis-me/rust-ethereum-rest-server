@@ -1,203 +1,176 @@
 
-# Rust Actix Web Service
+# Rust Ethereum API with Actix-web
 
-This is a Rust web service built using the Actix Web framework. The service includes JWT-based authentication and interacts with the Ethereum blockchain to fetch gas prices.
-
-## Table of Contents
-
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Running the Service](#running-the-service)
-- [Endpoints](#endpoints)
-- [Middleware](#middleware)
-- [License](#license)
-
-## Features
-
-- Basic web server using Actix Web.
-- JWT-based authentication.
-- Fetching Ethereum gas price using `web3` crate.
-- Logging middleware for request logging.
+This is a REST API built using Rust and the Actix-web framework to interact with the Ethereum blockchain. It includes several endpoints to fetch information such as gas prices, latest blocks, transaction details, and more. The API is secured using JWT (JSON Web Tokens).
 
 ## Prerequisites
 
-- Rust and Cargo installed. You can install Rust from [rust-lang.org](https://www.rust-lang.org/).
-- An Ethereum node URL. You can use services like [Infura](https://infura.io/) to get a free node URL.
+- [Rust](https://www.rust-lang.org/)
+- [Cargo](https://doc.rust-lang.org/cargo/) (Rust package manager)
+- An Ethereum node URL (e.g., [Infura](https://infura.io/))
 
 ## Installation
 
 1. Clone the repository:
 
-    \`\`\`sh
-    git clone <repository_url>
-    cd <repository_directory>
-    \`\`\`
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
 
-2. Build the project:
+2. Install the dependencies:
 
-    \`\`\`sh
-    cargo build
-    \`\`\`
+   ```bash
+   cargo build
+   ```
 
-## Running the Service
+## Configuration
 
-To run the web service, use the following command:
+Before running the server, set your Ethereum node URL in the `main` function of `main.rs`:
 
-\`\`\`sh
+```rust
+let node_url = "https://sepolia.infura.io/v3/<your-infura-project-id>".to_string();
+```
+
+Replace `<your-infura-project-id>` with your actual Infura project ID.
+
+## Running the Server
+
+Start the server by running:
+
+```bash
 cargo run
-\`\`\`
+```
 
-The service will start on \`127.0.0.1:8080\`.
+The server will start on `127.0.0.1:8080`. You can access the API endpoints via a browser or an HTTP client such as curl or Postman.
 
-## Endpoints
+## API Endpoints
 
-### \`GET /\`
+### Public Endpoints
 
-Returns a simple greeting.
+- `GET /` - Welcome message.
 
-- **Response**: \`Hello, world!\`
+Example:
 
-### \`POST /login\`
+```bash
+curl http://127.0.0.1:8080/
+```
 
-Generates a JWT token.
+- `POST /login` - Generates a JWT token for authentication.
 
-- **Response**: JWT token string.
+Example:
 
-### \`GET /gas_price\`
+```bash
+curl -X POST http://127.0.0.1:8080/login
+```
 
-Fetches the current Ethereum gas price. Requires a valid JWT token.
+### Secured Endpoints
 
-- **Headers**:
-    - \`Authorization\`: Bearer \`<JWT token>\`
+These endpoints require a Bearer token obtained from the `/login` endpoint.
 
-- **Response**: Current gas price.
+- `GET /gas_price` - Returns the current gas price.
 
-## Middleware
+Example:
 
-### Logger
+```bash
+curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/gas_price
+```
 
-Logs incoming requests.
+- `GET /latest_block` - Returns information about the latest block.
 
-### JWT Middleware
+Example:
 
-Validates JWT tokens for protected routes.
+```bash
+curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/latest_block
+```
 
-#### JWT Middleware Implementation
+- `GET /transaction_details/{tx_hash}` - Returns details of a transaction by hash.
 
-\`\`\`rust
-async fn jwt_middleware(req: ServiceRequest, credentials: BearerAuth) -> Result<ServiceRequest, actix_web::Error> {
-    let token = credentials.token();
-    let secret = "my_secret_key";
+Example:
 
-    let token_data = decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(secret.as_ref()),
-        &Validation::new(Algorithm::HS256),
-    );
+```bash
+curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/transaction_details/<tx_hash>
+```
 
-    match token_data {
-        Ok(_) => Ok(req),
-        Err(_) => Err(actix_web::error::ErrorUnauthorized("Invalid token")),
-    }
-}
-\`\`\`
+Replace `<tx_hash>` with the actual transaction hash.
+
+- `GET /balance/{address}` - Returns the balance of an Ethereum address.
+
+Example:
+
+```bash
+curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/balance/<address>
+```
+
+Replace `<address>` with the actual Ethereum address.
+
+- `GET /network_info` - Returns network version and peer count.
+
+Example:
+
+```bash
+curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/network_info
+```
+
+- `GET /sync_status` - Returns the synchronization status of the node.
+
+Example:
+
+```bash
+curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/sync_status
+```
+
+- `GET /transaction_count_in_block/{block_number}` - Returns the number of transactions in a specified block.
+
+Example:
+
+```bash
+curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/transaction_count_in_block/<block_number>
+```
+
+Replace `<block_number>` with the actual block number.
+
+## JWT Authentication
+
+The API uses JWT for authentication. To access secured endpoints:
+
+1. Get a token from the `/login` endpoint.
+
+Example:
+
+```bash
+token=$(curl -s -X POST http://127.0.0.1:8080/login)
+```
+
+2. Include the token in the `Authorization` header of your request:
+
+Example:
+
+```bash
+curl -H "Authorization: Bearer $token" http://127.0.0.1:8080/gas_price
+```
+
+## Project Structure
+
+- `main.rs`: The main entry point of the application.
+- `Cargo.toml`: The Cargo configuration file that lists dependencies and metadata for the project.
+
+## About Actix-web
+
+[Actix-web](https://actix.rs/) is a powerful, pragmatic, and extremely fast web framework for Rust. It is built on the Actix actor framework, which is a mature framework for building concurrent applications. Some of the key features of Actix-web include:
+
+- **Concurrency**: Actix-web uses the Actix actor framework to provide a highly concurrent web server.
+- **Speed**: Actix-web is designed for speed and efficiency, making it one of the fastest web frameworks available.
+- **Type Safety**: The Rust language provides strong type safety guarantees, which are inherited by Actix-web.
+- **Extensibility**: Actix-web is highly extensible, allowing you to add custom middleware, extractors, and more.
+
+### Key Components
+
+- **Actors**: Actix-web leverages the Actix actor model for managing state and concurrency.
+- **Middleware**: Actix-web supports middleware for request pre-processing and post-processing.
+- **Extractors**: Actix-web provides extractors to retrieve data from requests.
+- **Routing**: Actix-web supports flexible routing with URL parameters, guards, and more.
 
 ## License
 
 This project is licensed under the MIT License.
-
----
-
-## Code Explanation
-
-### Structs and Enums
-
-- **Claims**: Represents the structure of the JWT token claims.
-
-    \`\`\`rust
-    #[derive(Debug, Serialize, Deserialize)]
-    struct Claims {
-        sub: String,
-        company: String,
-        exp: usize,
-    }
-    \`\`\`
-
-### Handlers
-
-- **index**: Handles the \`/\` endpoint, returning a simple greeting.
-
-    \`\`\`rust
-    async fn index() -> impl Responder {
-        HttpResponse::Ok().body("Hello, world!")
-    }
-    \`\`\`
-
-- **login**: Handles the \`/login\` endpoint, generating a JWT token.
-
-    \`\`\`rust
-    async fn login() -> impl Responder {
-        let claims = Claims {
-            sub: "b@b.com".to_owned(),
-            company: "ACME".to_owned(),
-            exp: 10000000000,
-        };
-
-        let token = match encode(&Header::default(), &claims, &EncodingKey::from_secret("my_secret_key".as_ref())) {
-            Ok(t) => t,
-            Err(_) => return HttpResponse::InternalServerError().body("Error generando el token"),
-        };
-
-        HttpResponse::Ok().body(token)
-    }
-    \`\`\`
-
-- **get_gas_price**: Handles the \`/gas_price\` endpoint, fetching the current Ethereum gas price.
-
-    \`\`\`rust
-    async fn get_gas_price(node_url: web::Data<String>) -> impl Responder {
-        let transport = match Http::new(&node_url) {
-            Ok(transport) => transport,
-            Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
-        };
-
-        let web3 = Web3::new(transport);
-
-        let gas_price = match web3.eth().gas_price().await {
-            Ok(gas_price) => gas_price,
-            Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el precio del gas"),
-        };
-
-        HttpResponse::Ok().body(format!("Precio del gas: {}", gas_price))
-    }
-    \`\`\`
-
-### Main Function
-
-Sets up the Actix web server with routes and middleware.
-
-\`\`\`rust
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    let node_url =  "https://sepolia.infura.io/v3/YOUR-KEY-GOES-HERE".to_string();
-
-    HttpServer::new(move || {
-        App::new()
-            .wrap(Logger::default())
-            .app_data(web::Data::new(node_url.clone()))
-            .route("/", web::get().to(index))
-            .route("/login", web::post().to(login))
-            .service(
-                web::resource("/gas_price")
-                    .wrap(HttpAuthentication::bearer(jwt_middleware))
-                    .route(web::get().to(get_gas_price))
-            )
-    })
-    .bind("127.0.0.1:8080")?
-    .run()
-    .await
-}
-\`\`\`
-
-This README provides a comprehensive guide to the Rust Actix Web service, covering setup, usage, and key code components.
