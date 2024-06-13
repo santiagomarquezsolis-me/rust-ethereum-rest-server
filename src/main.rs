@@ -7,6 +7,7 @@ use jsonwebtoken::{encode, decode, EncodingKey, DecodingKey, Header, Validation,
 use serde::{Deserialize, Serialize};
 use web3::transports::Http;
 use web3::Web3;
+use web3::types::{Block, BlockId, BlockNumber};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -18,17 +19,41 @@ struct Claims {
 async fn get_gas_price(node_url: web::Data<String>) -> impl Responder {
     let transport = match Http::new(&node_url) {
         Ok(transport) => transport,
-        Err(_) => return HttpResponse::InternalServerError().body("Error creating the transport"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
     };
 
     let web3 = Web3::new(transport);
 
     let gas_price = match web3.eth().gas_price().await {
         Ok(gas_price) => gas_price,
-        Err(_) => return HttpResponse::InternalServerError().body("Error getting gas price"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el precio del gas"),
     };
 
-    HttpResponse::Ok().body(format!("Gas Price: {}", gas_price))
+    HttpResponse::Ok().body(format!("Precio del gas: {}", gas_price))
+}
+
+async fn get_latest_block(node_url: web::Data<String>) -> impl Responder {
+    let transport = match Http::new(&node_url) {
+        Ok(transport) => transport,
+        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+    };
+
+    let web3 = Web3::new(transport);
+
+    let block_number = match web3.eth().block_number().await {
+        Ok(block_number) => block_number,
+        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el número del bloque"),
+    };
+
+    let block: Option<Block<_>> = match web3.eth().block(BlockId::Number(BlockNumber::Number(block_number))).await {
+        Ok(block) => block,
+        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el bloque"),
+    };
+
+    match block {
+        Some(block) => HttpResponse::Ok().body(format!("Último bloque: {:?}", block)),
+        None => HttpResponse::InternalServerError().body("No se pudo obtener el bloque."),
+    }
 }
 
 async fn index() -> impl Responder {
@@ -44,7 +69,7 @@ async fn login() -> impl Responder {
 
     let token = match encode(&Header::default(), &claims, &EncodingKey::from_secret("my_secret_key".as_ref())) {
         Ok(t) => t,
-        Err(_) => return HttpResponse::InternalServerError().body("Error Token Generation"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error generando el token"),
     };
 
     HttpResponse::Ok().body(token)
@@ -80,6 +105,11 @@ async fn main() -> std::io::Result<()> {
                 web::resource("/gas_price")
                     .wrap(HttpAuthentication::bearer(jwt_middleware))
                     .route(web::get().to(get_gas_price))
+            )
+            .service(
+                web::resource("/latest_block")
+                    .wrap(HttpAuthentication::bearer(jwt_middleware))
+                    .route(web::get().to(get_latest_block))
             )
     })
     .bind("127.0.0.1:8080")?
