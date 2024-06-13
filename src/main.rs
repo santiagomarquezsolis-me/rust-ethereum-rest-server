@@ -7,7 +7,7 @@ use jsonwebtoken::{encode, decode, EncodingKey, DecodingKey, Header, Validation,
 use serde::{Deserialize, Serialize};
 use web3::transports::Http;
 use web3::Web3;
-use web3::types::{Block, BlockId, BlockNumber};
+use web3::types::{Block, BlockId, H256, TransactionId, BlockNumber};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -53,6 +53,30 @@ async fn get_latest_block(node_url: web::Data<String>) -> impl Responder {
     match block {
         Some(block) => HttpResponse::Ok().body(format!("Último bloque: {:?}", block)),
         None => HttpResponse::InternalServerError().body("No se pudo obtener el bloque."),
+    }
+}
+
+async fn get_transaction_details(node_url: web::Data<String>, tx_hash: web::Path<String>) -> impl Responder {
+    let transport = match Http::new(&node_url) {
+        Ok(transport) => transport,
+        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+    };
+
+    let web3 = Web3::new(transport);
+
+    let tx_hash: H256 = match tx_hash.parse() {
+        Ok(hash) => hash,
+        Err(_) => return HttpResponse::InternalServerError().body("Error parseando el hash de la transacción"),
+    };
+
+    let transaction = match web3.eth().transaction(TransactionId::Hash(tx_hash)).await {
+        Ok(tx) => tx,
+        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo los detalles de la transacción"),
+    };
+
+    match transaction {
+        Some(tx) => HttpResponse::Ok().body(format!("Detalles de la transacción: {:?}", tx)),
+        None => HttpResponse::InternalServerError().body("Transacción no encontrada."),
     }
 }
 
@@ -110,6 +134,11 @@ async fn main() -> std::io::Result<()> {
                 web::resource("/latest_block")
                     .wrap(HttpAuthentication::bearer(jwt_middleware))
                     .route(web::get().to(get_latest_block))
+            )
+            .service(
+                web::resource("/transaction_details/{tx_hash}")
+                    .wrap(HttpAuthentication::bearer(jwt_middleware))
+                    .route(web::get().to(get_transaction_details))
             )
     })
     .bind("127.0.0.1:8080")?
