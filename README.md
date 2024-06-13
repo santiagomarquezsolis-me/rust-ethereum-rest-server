@@ -180,7 +180,7 @@ Sets up the Actix web server with routes and middleware.
 \`\`\`rust
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let node_url =  "https://sepolia.infura.io/v3/e8e126fe1041436a97258323079a0708".to_string();
+    let node_url =  "https://sepolia.infura.io/v3/YOUR-KEY-GOES-HERE".to_string();
 
     HttpServer::new(move || {
         App::new()
