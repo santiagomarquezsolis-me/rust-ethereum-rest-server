@@ -18,17 +18,17 @@ struct Claims {
 async fn get_gas_price(node_url: web::Data<String>) -> impl Responder {
     let transport = match Http::new(&node_url) {
         Ok(transport) => transport,
-        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error creating the transport"),
     };
 
     let web3 = Web3::new(transport);
 
     let gas_price = match web3.eth().gas_price().await {
         Ok(gas_price) => gas_price,
-        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el precio del gas"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error getting gas price"),
     };
 
-    HttpResponse::Ok().body(format!("Precio del gas: {}", gas_price))
+    HttpResponse::Ok().body(format!("Gas Price: {}", gas_price))
 }
 
 async fn index() -> impl Responder {
@@ -44,7 +44,7 @@ async fn login() -> impl Responder {
 
     let token = match encode(&Header::default(), &claims, &EncodingKey::from_secret("my_secret_key".as_ref())) {
         Ok(t) => t,
-        Err(_) => return HttpResponse::InternalServerError().body("Error generando el token"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error Token Generation"),
     };
 
     HttpResponse::Ok().body(token)
