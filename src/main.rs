@@ -7,7 +7,7 @@ use jsonwebtoken::{encode, decode, EncodingKey, DecodingKey, Header, Validation,
 use serde::{Deserialize, Serialize};
 use web3::transports::Http;
 use web3::Web3;
-use web3::types::{Block, BlockId, H256, TransactionId, Address, BlockNumber, SyncState};
+use web3::types::{Block, BlockId, BlockNumber, H256, TransactionId, Address, SyncState};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -141,6 +141,30 @@ async fn get_sync_status(node_url: web::Data<String>) -> impl Responder {
     }
 }
 
+async fn get_transaction_count_in_block(node_url: web::Data<String>, block_number: web::Path<u64>) -> impl Responder {
+    let transport = match Http::new(&node_url) {
+        Ok(transport) => transport,
+        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+    };
+
+    let web3 = Web3::new(transport);
+
+    let block_number_u64: u64 = block_number.into_inner();
+    let block_number_u64 = web3::types::U64::from(block_number_u64);
+
+    let block = match web3.eth().block(BlockId::Number(BlockNumber::Number(block_number_u64))).await {
+        Ok(block) => block,
+        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el bloque"),
+    };
+
+    match block {
+        Some(block) => {
+            let transaction_count = block.transactions.len();
+            HttpResponse::Ok().body(format!("Número de transacciones en el bloque {}: {}", block_number_u64, transaction_count))
+        },
+        None => HttpResponse::InternalServerError().body(format!("No se pudo encontrar el bloque {}.", block_number_u64)),
+    }
+}
 
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello, world!")
@@ -216,6 +240,11 @@ async fn main() -> std::io::Result<()> {
                 web::resource("/sync_status")
                     .wrap(HttpAuthentication::bearer(jwt_middleware))
                     .route(web::get().to(get_sync_status))
+            )
+            .service(
+                web::resource("/transaction_count_in_block/{block_number}")
+                    .wrap(HttpAuthentication::bearer(jwt_middleware))
+                    .route(web::get().to(get_transaction_count_in_block))
             )
     })
     .bind("127.0.0.1:8080")?
