@@ -19,64 +19,64 @@ struct Claims {
 async fn get_gas_price(node_url: web::Data<String>) -> impl Responder {
     let transport = match Http::new(&node_url) {
         Ok(transport) => transport,
-        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error creating transport"),
     };
 
     let web3 = Web3::new(transport);
 
     let gas_price = match web3.eth().gas_price().await {
         Ok(gas_price) => gas_price,
-        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el precio del gas"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error obtaining gas price"),
     };
 
-    HttpResponse::Ok().body(format!("Precio del gas: {}", gas_price))
+    HttpResponse::Ok().body(format!("Gas Price: {}", gas_price))
 }
 
 async fn get_latest_block(node_url: web::Data<String>) -> impl Responder {
     let transport = match Http::new(&node_url) {
         Ok(transport) => transport,
-        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error creating transport"),
     };
 
     let web3 = Web3::new(transport);
 
     let block_number = match web3.eth().block_number().await {
         Ok(block_number) => block_number,
-        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el número del bloque"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error getting block number"),
     };
 
     let block: Option<Block<_>> = match web3.eth().block(BlockId::Number(BlockNumber::Number(block_number))).await {
         Ok(block) => block,
-        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el bloque"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error getting block"),
     };
 
     match block {
-        Some(block) => HttpResponse::Ok().body(format!("Último bloque: {:?}", block)),
-        None => HttpResponse::InternalServerError().body("No se pudo obtener el bloque."),
+        Some(block) => HttpResponse::Ok().body(format!("Last Block: {:?}", block)),
+        None => HttpResponse::InternalServerError().body("Could not get block."),
     }
 }
 
 async fn get_transaction_details(node_url: web::Data<String>, tx_hash: web::Path<String>) -> impl Responder {
     let transport = match Http::new(&node_url) {
         Ok(transport) => transport,
-        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error creating transport"),
     };
 
     let web3 = Web3::new(transport);
 
     let tx_hash: H256 = match tx_hash.parse() {
         Ok(hash) => hash,
-        Err(_) => return HttpResponse::InternalServerError().body("Error parseando el hash de la transacción"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error parsing the transaction hash"),
     };
 
     let transaction = match web3.eth().transaction(TransactionId::Hash(tx_hash)).await {
         Ok(tx) => tx,
-        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo los detalles de la transacción"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error getting transaction details"),
     };
 
     match transaction {
-        Some(tx) => HttpResponse::Ok().body(format!("Detalles de la transacción: {:?}", tx)),
-        None => HttpResponse::InternalServerError().body("Transacción no encontrada."),
+        Some(tx) => HttpResponse::Ok().body(format!("Details of the transaction: {:?}", tx)),
+        None => HttpResponse::InternalServerError().body("Transaction not found."),
     }
 }
 
@@ -104,47 +104,47 @@ async fn get_balance(node_url: web::Data<String>, address: web::Path<String>) ->
 async fn get_network_info(node_url: web::Data<String>) -> impl Responder {
     let transport = match Http::new(&node_url) {
         Ok(transport) => transport,
-        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error creating transport"),
     };
 
     let web3 = Web3::new(transport);
 
     let net_version = match web3.net().version().await {
         Ok(version) => version,
-        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo la versión de la red"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error getting network version"),
     };
 
     let peer_count = match web3.net().peer_count().await {
         Ok(count) => count,
-        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el número de peers conectados"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error obtaining the number of connected peers"),
     };
 
-    HttpResponse::Ok().body(format!("Versión de la red: {}\nNúmero de peers conectados: {}", net_version, peer_count))
+    HttpResponse::Ok().body(format!("Network version: {}\nNumber of peers connected: {}", net_version, peer_count))
 }
 
 async fn get_sync_status(node_url: web::Data<String>) -> impl Responder {
     let transport = match Http::new(&node_url) {
         Ok(transport) => transport,
-        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error creating transport"),
     };
 
     let web3 = Web3::new(transport);
 
     let sync_status = match web3.eth().syncing().await {
         Ok(status) => status,
-        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el estado de sincronización"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error getting sync status"),
     };
 
     match sync_status {
-        SyncState::Syncing(sync_info) => HttpResponse::Ok().body(format!("El nodo está sincronizando.\nEstado de sincronización: {:?}", sync_info)),
-        SyncState::NotSyncing => HttpResponse::Ok().body("El nodo está completamente sincronizado.".to_string()),
+        SyncState::Syncing(sync_info) => HttpResponse::Ok().body(format!("The node is synchronizing.\nSynchronization status: {:?}", sync_info)),
+        SyncState::NotSyncing => HttpResponse::Ok().body("The node is fully synchronized.".to_string()),
     }
 }
 
 async fn get_transaction_count_in_block(node_url: web::Data<String>, block_number: web::Path<u64>) -> impl Responder {
     let transport = match Http::new(&node_url) {
         Ok(transport) => transport,
-        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error creating transport"),
     };
 
     let web3 = Web3::new(transport);
@@ -154,15 +154,15 @@ async fn get_transaction_count_in_block(node_url: web::Data<String>, block_numbe
 
     let block = match web3.eth().block(BlockId::Number(BlockNumber::Number(block_number_u64))).await {
         Ok(block) => block,
-        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el bloque"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error getting block"),
     };
 
     match block {
         Some(block) => {
             let transaction_count = block.transactions.len();
-            HttpResponse::Ok().body(format!("Número de transacciones en el bloque {}: {}", block_number_u64, transaction_count))
+            HttpResponse::Ok().body(format!("Number of transactions in the block {}: {}", block_number_u64, transaction_count))
         },
-        None => HttpResponse::InternalServerError().body(format!("No se pudo encontrar el bloque {}.", block_number_u64)),
+        None => HttpResponse::InternalServerError().body(format!("Could not find block {}.", block_number_u64)),
     }
 }
 
@@ -179,7 +179,7 @@ async fn login() -> impl Responder {
 
     let token = match encode(&Header::default(), &claims, &EncodingKey::from_secret("my_secret_key".as_ref())) {
         Ok(t) => t,
-        Err(_) => return HttpResponse::InternalServerError().body("Error generando el token"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error generating token"),
     };
 
     HttpResponse::Ok().body(token)
