@@ -7,7 +7,7 @@ use jsonwebtoken::{encode, decode, EncodingKey, DecodingKey, Header, Validation,
 use serde::{Deserialize, Serialize};
 use web3::transports::Http;
 use web3::Web3;
-use web3::types::{Block, BlockId, H256, TransactionId, Address, BlockNumber};
+use web3::types::{Block, BlockId, H256, TransactionId, Address, BlockNumber, SyncState};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -122,6 +122,26 @@ async fn get_network_info(node_url: web::Data<String>) -> impl Responder {
     HttpResponse::Ok().body(format!("Versión de la red: {}\nNúmero de peers conectados: {}", net_version, peer_count))
 }
 
+async fn get_sync_status(node_url: web::Data<String>) -> impl Responder {
+    let transport = match Http::new(&node_url) {
+        Ok(transport) => transport,
+        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+    };
+
+    let web3 = Web3::new(transport);
+
+    let sync_status = match web3.eth().syncing().await {
+        Ok(status) => status,
+        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el estado de sincronización"),
+    };
+
+    match sync_status {
+        SyncState::Syncing(sync_info) => HttpResponse::Ok().body(format!("El nodo está sincronizando.\nEstado de sincronización: {:?}", sync_info)),
+        SyncState::NotSyncing => HttpResponse::Ok().body("El nodo está completamente sincronizado.".to_string()),
+    }
+}
+
+
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello, world!")
 }
@@ -191,6 +211,11 @@ async fn main() -> std::io::Result<()> {
                 web::resource("/network_info")
                     .wrap(HttpAuthentication::bearer(jwt_middleware))
                     .route(web::get().to(get_network_info))
+            )
+            .service(
+                web::resource("/sync_status")
+                    .wrap(HttpAuthentication::bearer(jwt_middleware))
+                    .route(web::get().to(get_sync_status))
             )
     })
     .bind("127.0.0.1:8080")?
