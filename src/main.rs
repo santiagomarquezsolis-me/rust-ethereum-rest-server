@@ -101,6 +101,26 @@ async fn get_balance(node_url: web::Data<String>, address: web::Path<String>) ->
     HttpResponse::Ok().body(format!("Balance de la dirección {}: {}", address, balance))
 }
 
+async fn get_network_info(node_url: web::Data<String>) -> impl Responder {
+    let transport = match Http::new(&node_url) {
+        Ok(transport) => transport,
+        Err(_) => return HttpResponse::InternalServerError().body("Error creando el transporte"),
+    };
+
+    let web3 = Web3::new(transport);
+
+    let net_version = match web3.net().version().await {
+        Ok(version) => version,
+        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo la versión de la red"),
+    };
+
+    let peer_count = match web3.net().peer_count().await {
+        Ok(count) => count,
+        Err(_) => return HttpResponse::InternalServerError().body("Error obteniendo el número de peers conectados"),
+    };
+
+    HttpResponse::Ok().body(format!("Versión de la red: {}\nNúmero de peers conectados: {}", net_version, peer_count))
+}
 
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello, world!")
@@ -166,6 +186,11 @@ async fn main() -> std::io::Result<()> {
                 web::resource("/balance/{address}")
                     .wrap(HttpAuthentication::bearer(jwt_middleware))
                     .route(web::get().to(get_balance))
+            )
+            .service(
+                web::resource("/network_info")
+                    .wrap(HttpAuthentication::bearer(jwt_middleware))
+                    .route(web::get().to(get_network_info))
             )
     })
     .bind("127.0.0.1:8080")?
