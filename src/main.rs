@@ -6,8 +6,10 @@ use actix_web_httpauth::extractors::bearer::BearerAuth;
 use jsonwebtoken::{encode, decode, EncodingKey, DecodingKey, Header, Validation, Algorithm};
 use serde::{Deserialize, Serialize};
 use web3::transports::Http;
+
 use web3::Web3;
 use web3::types::{Block, BlockId, BlockNumber, H256, TransactionId, Address, SyncState};
+
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -201,6 +203,48 @@ async fn jwt_middleware(req: ServiceRequest, credentials: BearerAuth) -> Result<
     }
 }
 
+async fn get_account_nonce(node_url: web::Data<String>, path: web::Path<(String,)>,) -> impl Responder {
+    let transport = match Http::new(&node_url) {
+        Ok(transport) => transport,
+        Err(_) => return HttpResponse::InternalServerError().body("Error creating transport"),
+    };
+
+    let web3 = Web3::new(transport);
+    let address: Address = match path.0.parse() {
+        Ok(address) => address,
+        Err(_) => return HttpResponse::BadRequest().body("Invalid address format"),
+    };
+
+    let nonce = match web3.eth().transaction_count(address, None).await {
+        Ok(nonce) => nonce,
+        Err(_) => return HttpResponse::InternalServerError().body("Error getting nonce"),
+    };
+
+    HttpResponse::Ok().body(format!("Nonce: {}", nonce))
+}
+
+async fn get_block_by_number(
+    node_url: web::Data<String>,
+    path: web::Path<(u64,)>,
+) -> impl Responder {
+    let transport = match Http::new(&node_url) {
+        Ok(transport) => transport,
+        Err(_) => return HttpResponse::InternalServerError().body("Error creating transport"),
+    };
+
+    let web3 = Web3::new(transport);
+    let block_number = BlockNumber::Number(path.0.into());
+
+    let block = match web3.eth().block(BlockId::Number(block_number)).await {
+        Ok(Some(block)) => block,
+        Ok(None) => return HttpResponse::NotFound().body("Block not found"),
+        Err(_) => return HttpResponse::InternalServerError().body("Error getting block"),
+    };
+
+    HttpResponse::Ok().json(block)
+}
+
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let node_url =  "https://sepolia.infura.io/v3/e8e126fe1041436a97258323079a0708".to_string();
@@ -246,6 +290,17 @@ async fn main() -> std::io::Result<()> {
                     .wrap(HttpAuthentication::bearer(jwt_middleware))
                     .route(web::get().to(get_transaction_count_in_block))
             )
+            .service(
+                web::resource("/account_nonce/{address}")
+                    .wrap(HttpAuthentication::bearer(jwt_middleware))
+                    .route(web::get().to(get_account_nonce)),
+            )
+            .service(
+                web::resource("/block_by_number/{block_number}")
+                    .wrap(HttpAuthentication::bearer(jwt_middleware))
+                    .route(web::get().to(get_block_by_number)),
+            )
+           
     })
     .bind("127.0.0.1:8080")?
     .run()
