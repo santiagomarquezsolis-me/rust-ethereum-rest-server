@@ -89,75 +89,49 @@ curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/latest_block
 Example:
 
 ```bash
-curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/transaction_details/<tx_hash>
+curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/transaction_details/{tx_hash}
 ```
 
-Replace `<tx_hash>` with the actual transaction hash.
+### Function Descriptions
 
-- `GET /balance/{address}` - Returns the balance of an Ethereum address.
+#### `get_gas_price`
 
-Example:
+Fetches the current gas price from the Ethereum blockchain.
+
+#### `get_latest_block`
+
+Fetches the latest block details from the Ethereum blockchain.
+
+#### `get_transaction_details`
+
+Fetches the details of a transaction given its hash.
+
+#### `generate_jwt`
+
+Generates a JWT token for authentication purposes.
+
+#### `validator`
+
+Validates incoming requests to ensure they have a proper JWT token.
+
+## Authentication
+
+The API uses JWT (JSON Web Tokens) for securing the endpoints. To access the secured endpoints, you need to:
+
+1. Obtain a token by sending a POST request to `/login`.
+2. Include the token in the `Authorization` header as a Bearer token when making requests to secured endpoints.
+
+### Example
 
 ```bash
-curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/balance/<address>
+TOKEN=$(curl -s -X POST http://127.0.0.1:8080/login | jq -r '.token')
+
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/gas_price
 ```
 
-Replace `<address>` with the actual Ethereum address.
+## Actix-web Features
 
-- `GET /network_info` - Returns network version and peer count.
-
-Example:
-
-```bash
-curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/network_info
-```
-
-- `GET /sync_status` - Returns the synchronization status of the node.
-
-Example:
-
-```bash
-curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/sync_status
-```
-
-- `GET /transaction_count_in_block/{block_number}` - Returns the number of transactions in a specified block.
-
-Example:
-
-```bash
-curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8080/transaction_count_in_block/<block_number>
-```
-
-Replace `<block_number>` with the actual block number.
-
-## JWT Authentication
-
-The API uses JWT for authentication. To access secured endpoints:
-
-1. Get a token from the `/login` endpoint.
-
-Example:
-
-```bash
-token=$(curl -s -X POST http://127.0.0.1:8080/login)
-```
-
-2. Include the token in the `Authorization` header of your request:
-
-Example:
-
-```bash
-curl -H "Authorization: Bearer $token" http://127.0.0.1:8080/gas_price
-```
-
-## Project Structure
-
-- `main.rs`: The main entry point of the application.
-- `Cargo.toml`: The Cargo configuration file that lists dependencies and metadata for the project.
-
-## About Actix-web
-
-[Actix-web](https://actix.rs/) is a powerful, pragmatic, and extremely fast web framework for Rust. It is built on the Actix actor framework, which is a mature framework for building concurrent applications. Some of the key features of Actix-web include:
+Actix-web is a powerful, pragmatic, and extremely fast web framework for Rust. Here are some of its key features:
 
 - **Concurrency**: Actix-web uses the Actix actor framework to provide a highly concurrent web server.
 - **Speed**: Actix-web is designed for speed and efficiency, making it one of the fastest web frameworks available.
